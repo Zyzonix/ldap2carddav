@@ -120,18 +120,18 @@ if __name__ == '__main__':
 
         for object in download_ldif(addressbookLdapDN):
             objectAttributes = object["attributes"]
-            objectAttributeName = objectAttributes.get("sAMAccountName")
+            objectAttributeAccountName = objectAttributes.get("sAMAccountName")
             objectAttributeMail = objectAttributes.get("mail")
             if objectAttributeMail:
 
                 # skip already added and owner
-                if  (objectAttributeName not in adressbookRights) and not (objectAttributeName == addressbook["OWNER"]):
-                    logging.write("Granting permission to: " + objectAttributeName)
+                if  (objectAttributeAccountName not in adressbookRights) and not (objectAttributeAccountName == addressbook["OWNER"]):
+                    logging.write("Granting permission to: " + objectAttributeAccountName)
                     
                     # set permissions
                     rights = ["ObjectViewer"]
                     rights_json = json.dumps(rights)
-                    full_command_add = ["sudo", "-u", "sogo", "/usr/sbin/sogo-tool", "manage-acl", "add", addressbook["OWNER"], "Contacts/" + addressbook["UID"], objectAttributeName, rights_json]                
+                    full_command_add = ["sudo", "-u", "sogo", "/usr/sbin/sogo-tool", "manage-acl", "add", addressbook["OWNER"], "Contacts/" + addressbook["UID"], objectAttributeAccountName, rights_json]                
                     
                     logging.write("Executing: " + str(full_command_add))
                     result = subprocess.run(full_command_add, capture_output=True, text=True)
@@ -143,9 +143,9 @@ if __name__ == '__main__':
                         print("Stderr:", result.stderr)
 
                 # automatically subscribe if enabled, skip owner
-                if addressbook["SUBSCRIBE"] and not (objectAttributeName == addressbook["OWNER"]):
+                if addressbook["SUBSCRIBE"] and not (objectAttributeAccountName == addressbook["OWNER"]):
                     time.sleep(0.1)
-                    full_command_subscribe = ["sudo", "-u", "sogo", "/usr/sbin/sogo-tool", "manage-acl", "subscribe", addressbook["OWNER"], "Contacts/" + addressbook["UID"], objectAttributeName]
+                    full_command_subscribe = ["sudo", "-u", "sogo", "/usr/sbin/sogo-tool", "manage-acl", "subscribe", addressbook["OWNER"], "Contacts/" + addressbook["UID"], objectAttributeAccountName]
                     
                     logging.write("Executing: " + str(full_command_subscribe))
                     result = subprocess.run(full_command_subscribe, capture_output=True, text=True)
