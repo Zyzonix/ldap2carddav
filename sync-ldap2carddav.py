@@ -9,21 +9,24 @@
 # 
 # file          | sync-ldap2carddav.py
 # project       | ldap2carddav
-# version       | 1.0
+# version       | 2.0
 #
 
 LDAP_URL = ''
 LDAP_BIND_DN = ''
 LDAP_BIND_PASSWORD = ''
-LDAP_BASE_DN = ''
-LDAP_FILTER = ''
+LDAP_FILTER = "(|(objectClass=person)(objectClass=contact))"
 
 CARDDAV_USERNAME = ''
 CARDDAV_PASSWORD = ''
-CARDDAV_URL = '<url-to-carddav>'
 
-# groups/ous in which an account isn't allowed to be 
-NOT_MEMBER_OF = ["CN=XX,OU=XX,OU=XX,DC=XX,DC=XX"]
+ADDRESSBOOKS = [
+    {
+        "ADDRESSBOOK_URL" : "https://<yourmailsrv>/SOGo/dav/<user>/Contacts/<UID>/",
+        "LDAP_BASE_DN" : "ou=XX,dc=XX,dc=XX",
+        "NOT_MEMBER_OF" : ["CN=XX,OU=XX,OU=XX,DC=XX,DC=XX"]
+    }
+]
 
 DEBUG = False
 
@@ -92,7 +95,7 @@ class logging():
         if DEBUG: print()
 
 
-def download_ldif():
+def download_ldif(LDAP_BASE_DN):
     server = ldap3.Server(LDAP_URL)
     connection = ldap3.Connection(server, user=LDAP_BIND_DN,
         password=LDAP_BIND_PASSWORD, auto_bind=ldap3.AUTO_BIND_TLS_BEFORE_BIND)
@@ -147,8 +150,8 @@ def convert_ldif_to_vcards(object):
     return vCard
 
 
-def upload_vcard(vCard):
-    url = CARDDAV_URL + str(vCard.guid.value) + ".vcf"
+def upload_vcard(vCard, ADDRESSBOOK_URL):
+    url = ADDRESSBOOK_URL + str(vCard.guid.value) + ".vcf"
     data = vCard.serialize().encode()
     result = requests.put(url, data=data, auth=(CARDDAV_USERNAME, CARDDAV_PASSWORD), headers=headers)
     result.raise_for_status()
@@ -174,69 +177,71 @@ def discover_addressbook(url):
 # init
 if __name__ == '__main__':
 
-    addressbook = discover_addressbook(CARDDAV_URL)
-    baseTree = ET.fromstring(addressbook)
-    
-    # Namespaces (common in WebDAV/CardDAV)
-    NS = {'d': 'DAV:'}
-
-    vCardsInAddressbook = []
-
-    # Iterate over each <response>
-    for response in baseTree.findall('d:response', NS):
-        href = response.find('d:href', NS).text
-        href = unquote(href)  # Decode URL-encoded parts
-        hrefSplit = href.rsplit("/", 1)
-        vCardRaw = hrefSplit[1]
-        vCardsInAddressbook.append(vCardRaw)
-
-    logging.write("Found " + str(len(vCardsInAddressbook)) + " vCards in addressbook")
-
-    count = 0
-    vCardsUploaded = []
-
-    for object in download_ldif():
+    for addressbook in ADDRESSBOOKS:
+        logging.write("Selected " + addressbook["ADDRESSBOOK_URL"])
+        addressbookContent = discover_addressbook(addressbook["ADDRESSBOOK_URL"])
+        baseTree = ET.fromstring(addressbookContent)
         
-        objectAttributes = object["attributes"]
-        objectMemberOf = objectAttributes.get("memberOf")
-        objectAttributeMail = objectAttributes.get("mail")
-        if objectAttributeMail:
-            logging.write("Processing: " + objectAttributeMail)
+        # Namespaces (common in WebDAV/CardDAV)
+        NS = {'d': 'DAV:'}
 
-            # if object is member of any group, check if group is not wanted
-            if objectMemberOf: 
-                for group in NOT_MEMBER_OF:
-                    if not group in objectMemberOf:
-                        vCard = convert_ldif_to_vcards(object)
-                        upload_vcard(vCard)
-                        count += 1
-                        vCardsUploaded.append(vCard.guid.value + ".vcf") 
+        vCardsInAddressbook = []
 
-            # if object is member of nothing take it anyway
-            else:
-                vCard = convert_ldif_to_vcards(object)
-                upload_vcard(vCard)
-                count += 1
-                vCardsUploaded.append(vCard.guid.value + ".vcf") 
+        # Iterate over each <response>
+        for response in baseTree.findall('d:response', NS):
+            href = response.find('d:href', NS).text
+            href = unquote(href)  # Decode URL-encoded parts
+            hrefSplit = href.rsplit("/", 1)
+            vCardRaw = hrefSplit[1]
+            vCardsInAddressbook.append(vCardRaw)
 
-    logging.write('Successfully uploaded {} vcards.'.format(count))
+        logging.write("Found " + str(len(vCardsInAddressbook)) + " vCards in addressbook")
 
-    # cards to be removed / not found in ldap
-    vCardToDelete = []
+        count = 0
+        vCardsUploaded = []
 
-    for vCard in vCardsInAddressbook:
-        if vCard not in vCardsUploaded:
-            vCardToDelete.append(vCard)
-    
-    if len(vCardToDelete) > 0:
-        if not DEBUG: print("Found " + str(len(vCardToDelete)) + " vCards to delete")
-        else: logging.write("Found " + str(len(vCardToDelete)) + " vCards to delete")
-        for vCard in vCardToDelete:
-            if not DEBUG: print(f"Deleting: {vCard}")
-            else: logging.write(f"Deleting: {vCard}")
-            delete_old_entries(vCard, url=CARDDAV_URL)
-    else:
-        logging.write("No vCards to delete found.")
+        for object in download_ldif(addressbook["LDAP_BASE_DN"]):
+            
+            objectAttributes = object["attributes"]
+            objectMemberOf = objectAttributes.get("memberOf")
+            objectAttributeMail = objectAttributes.get("mail")
+            if objectAttributeMail:
+                logging.write("Processing: " + objectAttributeMail)
+
+                # if object is member of any group, check if group is not wanted
+                if objectMemberOf and addressbook["NOT_MEMBER_OF"]: 
+                    for group in addressbook["NOT_MEMBER_OF"]:
+                        if not group in objectMemberOf:
+                            vCard = convert_ldif_to_vcards(object)
+                            upload_vcard(vCard, addressbook["ADDRESSBOOK_URL"])
+                            count += 1
+                            vCardsUploaded.append(vCard.guid.value + ".vcf") 
+
+                # if object is member of nothing take it anyway
+                else:
+                    vCard = convert_ldif_to_vcards(object)
+                    upload_vcard(vCard, addressbook["ADDRESSBOOK_URL"])
+                    count += 1
+                    vCardsUploaded.append(vCard.guid.value + ".vcf") 
+
+        logging.write('Successfully uploaded {} vcards.'.format(count))
+
+        # cards to be removed / not found in ldap
+        vCardToDelete = []
+
+        for vCard in vCardsInAddressbook:
+            if vCard not in vCardsUploaded:
+                vCardToDelete.append(vCard)
+        
+        if len(vCardToDelete) > 0:
+            if not DEBUG: print("Found " + str(len(vCardToDelete)) + " vCards to delete")
+            else: logging.write("Found " + str(len(vCardToDelete)) + " vCards to delete")
+            for vCard in vCardToDelete:
+                if not DEBUG: print(f"Deleting: {vCard}")
+                else: logging.write(f"Deleting: {vCard}")
+                delete_old_entries(vCard, url=addressbook["ADDRESSBOOK_URL"])
+        else:
+            logging.write("No vCards to delete found.")
 
 
 
