@@ -155,16 +155,6 @@ if __name__ == '__main__':
                     if not result.returncode == 0:
                         print("Stdout:", result.stdout)
                         print("Stderr:", result.stderr)
-        
-        full_command_restart_services = ["sudo", "systemctl", "restart", "memcached", "sogo"]
-        logging.write("Executing: " + str(full_command_restart_services))
-        
-        # Run the command and capture output
-        result = subprocess.run(full_command_restart_services, capture_output=True, text=True)
-
-        # Check the result
-        logging.write("Return code: " + str(result.returncode))  # 0 means success
-
 
         # finally show permissions 
         full_command_get = ["sudo", "-u", "sogo", "/usr/sbin/sogo-tool", "manage-acl", "get", addressbook["OWNER"], "Contacts/" + addressbook["UID"], "ALL"]
