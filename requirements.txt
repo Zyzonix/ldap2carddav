@@ -1,3 +1,0 @@
-ldap3 >= 2.4
-requests >= 2.12
-vobject >= 0.9
