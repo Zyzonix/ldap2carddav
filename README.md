@@ -1,6 +1,6 @@
 # Sync LDAP2CardDAV / Grant Addressbook access for SOGo
-- Synchronise LDAP Contacts/Users to a CardDAV-Addressbook via HTTP(e.g. SOGo)
-- Grant access to an addressbook in SOGo and auto subscribe
+- Synchronise LDAP Contacts/Users to a CardDAV-Addressbook via HTTP (e.g. for SOGo)
+- Grant access to an addressbook in SOGo and auto subscribe using sogo-tool
 
 ## Requirements / Setup
 To use both scripts install on Debian:
@@ -23,15 +23,25 @@ Configure scripts, comment out the script that shouldn't run. Maybe adjust paths
 - ```LDAP_URL``` String: URL to LDAP server
 - ```LDAP_BIND_DN``` String: Bind-User LDAP path
 - ```LDAP_BIND_PASSWORD``` String: PW for LDAP user
-- ```LDAP_BASE_DN``` String: Base LDAP path to search for users for addressbook
 - ```LDAP_FILTER``` String: LDAP filter e.g. ```(|(objectClass=person)(objectClass=contact))```
 - ```CARDDAV_USERNAME``` String: Username to Carddav
 - ```CARDDAV_PASSWORD``` String: Password to Carddav
-- ```CARDDAV_URL``` String: URL to Carddav-Server e.g. ```https://server/SOGo/dav/user/```
-- ```NOT_MEMBER_OF``` List: of LDAP-Groups which members should be ignored when adding to addressbook
 - ```DEBUG``` Boolean: en/disable debug output
 
-The ```mail``` attribute muste be not null, otherwise the user will be ignored.
+- ```ADDRESSBOOKS``` List with Dicts as values
+    - ```LDAP_BASE_DN``` String: Base LDAP path to search for users for addressbook
+    - ```CARDDAV_URL``` String: URL to Carddav-Server e.g. ```https://server/SOGo/dav/user/Contacts/UID/```
+    - ```NOT_MEMBER_OF``` List: of LDAP-Groups which members should be ignored when adding to addressbook
+Example:
+``` 
+    {
+        "ADDRESSBOOK_URL" : "https://your.mailserver.com/SOGo/dav/adressen/Contacts/<UID>/",
+        "LDAP_BASE_DN": 'ou=Staff,dc=myad,dc=com',
+        "NOT_MEMBER_OF" : ["CN=noAddressBook,OU=Groups,DC=myad,DC=com"]
+    }
+```
+
+**The ```mail``` attribute muste be not null, otherwise the user will be ignored.**
 
 ```grant-sogoAddressbook2ldapGroup.py```
 - ```LDAP_URL``` String: URL to LDAP server
@@ -56,14 +66,14 @@ Example:
     }
 ```
 
-
 ## Versioning
 ```sync-ldap2carddav.py```
 - ```1.0``` Initial version
+- ```2.0``` Add support for multiple addressbooks to export
 
 ```grant-sogoAddressbook2ldapGroup.py```
-- ```1.0``` Iniitial version
+- ```1.0``` Initial version
 
 
 ## Features to add
-- Export multiple addressbooks from different sources
+- ?
