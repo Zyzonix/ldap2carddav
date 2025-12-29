@@ -1,0 +1,18 @@
+#!/bin/bash
+#
+# written by Zyzonix
+# published by xerberosDevelopments
+#
+# Copyright (c) 2025 xerberosDevelopments
+#
+# date created  | 29-12-2025 15:36:47
+# 
+# file          | ldap2carddav
+# project       | ldap2carddav
+#
+MAILTO=root
+SHELL=/bin/bash
+
+# Try to update all certificates once a day
+0 2 * * *       root    /usr/bin/python3 /etc/sogo/ldap2carddav/sync-ldap2carddav.py
+0 3 * * *       root    /usr/bin/python3 /etc/sogo/ldap2carddav/grant-sogoAddressbook2ldapGroup.py
