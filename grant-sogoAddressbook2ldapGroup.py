@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
         # Check the result
         logging.write("Return code: " + str(result.returncode))  # 0 means success
-        print(result.stderr)
+        #print(result.stderr)
         if not result.returncode == 0:
             print("Stdout:", result.stdout)
             print("Stderr:", result.stderr)
@@ -165,8 +165,8 @@ if __name__ == '__main__':
 
         # Check the result
         logging.write("Return code: " + str(result.returncode))  # 0 means success
-        print(result.stdout)
-        print(result.stderr)
+        #print(result.stdout)
+        #print(result.stderr)
         if not result.returncode == 0:
             print("Stdout:", result.stdout)
             print("Stderr:", result.stderr)
